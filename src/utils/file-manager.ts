@@ -8,21 +8,23 @@ import archiver, { } from "archiver";
 const rootDir = process.env.DIR as string;
 export async function listOfFilesFromDir(child: string): Promise<FileInfo[]> {
     try {
-        const files = await fsAsync.readdir(Path.join(rootDir, child));
+        const path = Path.join(rootDir, child);
+        const files = await fsAsync.readdir(path);
         const fileInfos: FileInfo[] = [];
         for (const file of files) {
-            const fileInfo = await getFileDetails(file);
+            const fileInfo = await getFileDetails(Path.join(path, file));
             fileInfos.push(fileInfo)
         }
         return fileInfos;
     } catch (ex: any) {
+        console.log(ex);
         return [];
     }
 }
 
 export async function deleteFiles(paths: string[]): Promise<StatusInfo<string>[]> {
     const results: StatusInfo<string>[] = [];
-    paths = paths.map(it => Path.join(rootDir, it));
+    // paths = paths.map(it => Path.join(rootDir, it));
     for (const path of paths) {
         try {
             const file = Path.join(rootDir, path)
@@ -44,7 +46,7 @@ export async function deleteFiles(paths: string[]): Promise<StatusInfo<string>[]
 
 export async function renameFiles(paths: string[], name: string): Promise<StatusInfo<FileInfo>[]> {
     const results: StatusInfo<FileInfo>[] = [];
-    paths = paths.map(it => Path.join(rootDir, it));
+    //paths = paths.map(it => Path.join(rootDir, it));
     let count = 0;
     for (const path of paths) {
         try {
@@ -53,9 +55,15 @@ export async function renameFiles(paths: string[], name: string): Promise<Status
             const ext = Path.extname(oldFile);  // with .ext
             let newName = name;
             if (count !== 0) {
-                newName = name + "-" + count;
+                newName = Path.parse(name).name + "-" + count + Path.extname(name);
             }
-            const newPath = Path.join(parent, newName)
+            let newPath = Path.join(parent, newName);
+            for (let idx = 0; ; idx++) {
+                if (!fs.existsSync(newPath)) {
+                    break;
+                }
+                newPath = Path.join(parent, idx + "_" + newName);
+            }
             await fsAsync.rename(oldFile, newPath);
             const fileInfo = await getFileDetails(newPath);
             results.push({
@@ -78,8 +86,28 @@ export async function moveFiles(paths: string[], moveDir: string, currentDir: st
     paths = paths.map(it => Path.join(rootDir, it));
     for (const path of paths) {
         try {
-            await fsAsync.rename(path, moveDir);
+            const name = Path.basename(path);
+            const movedPath = Path.join(rootDir, moveDir, name);
+            await fsAsync.rename(path, movedPath);
         } catch (error: any) {
+            // console.log(error);
+        }
+    }
+    const results = await listOfFilesFromDir(currentDir);
+    return results;
+}
+
+export async function moveUploadFiles(files: {
+    path: string,
+    name: string
+}[], currentDir: string): Promise<FileInfo[]> {
+    for (const file of files) {
+        try {
+            const name = file.name;
+            const movedPath = Path.join(rootDir, currentDir, name);
+            await fsAsync.rename(file.path, movedPath);
+        } catch (error: any) {
+            // console.log(error);
         }
     }
     const results = await listOfFilesFromDir(currentDir);
@@ -90,7 +118,7 @@ export async function archiveFiles(paths: string[], currentDir: string, name: st
     const outputPath = Path.join(rootDir, currentDir, name + ".zip");
     const output = fs.createWriteStream(outputPath);
     const archive = archiver('zip', {
-        zlib: { level: 9 } // Sets the compression level.
+        zlib: { level: 0 } // Sets the compression level.
     });
 
     archive.on('warning', function (err) {
@@ -111,9 +139,15 @@ export async function archiveFiles(paths: string[], currentDir: string, name: st
 
     for (const path of paths) {
         const file = Path.join(rootDir, path);
-        archive.file(Path.basename(file), {
-            name: Path.basename(file)
-        })
+        const fileInfo = await getFileDetails(file);
+        if (fileInfo.isDirectory) {
+            archive.directory(file, fileInfo.name)
+        } else {
+            archive.file(file, {
+                name: Path.basename(file)
+            })
+        }
+
     }
 
     await archive.finalize();
@@ -122,6 +156,7 @@ export async function archiveFiles(paths: string[], currentDir: string, name: st
 }
 
 export async function getFileDetails(path: string): Promise<FileInfo> {
+    //console.log('getFileDetails ->', path);
     const stat = await fsAsync.stat(path);
     const fileInfo: FileInfo = {
         isDirectory: stat.isDirectory(),
