@@ -1,10 +1,17 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { archiveFiles, deleteFiles, listOfFilesFromDir, moveFiles, moveUploadFiles, renameFiles } from '../../../utils/file-manager';
+import { archiveFiles, deleteFiles, listOfFilesFromDir, mkdir, moveFiles, moveUploadFiles, renameFiles } from '../../../utils/file-manager';
 import formidable from "formidable"
 const router = express.Router();
 router.post("/files", async (req: Request, res: Response, next: NextFunction) => {
     const path = req.body.path;
     const results = await listOfFilesFromDir(path);
+    res.send(results);
+});
+
+router.post("/create-dir", async (req: Request, res: Response, next: NextFunction) => {
+    const currentDir = req.body.currentDir;
+    const name = req.body.name;
+    const results = await mkdir(name, currentDir);
     res.send(results);
 });
 
@@ -46,7 +53,7 @@ router.post("/upload-files", async (req: Request, res: Response, next: NextFunct
             return;
         }
         //@ts-ignore
-        const result = await moveUploadFiles(files.file.map? files.file.map((it: any) => ({ path: it.filepath, name: it.originalFilename })):[{ path: files.file.filepath, name: files.file.originalFilename }], fields.dir);
+        const result = await moveUploadFiles(files.file.map ? files.file.map((it: any) => ({ path: it.filepath, name: it.originalFilename })) : [{ path: files.file.filepath, name: files.file.originalFilename }], fields.dir);
         res.send(result)
     });
 

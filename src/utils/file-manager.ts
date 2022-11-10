@@ -22,6 +22,18 @@ export async function listOfFilesFromDir(child: string): Promise<FileInfo[]> {
     }
 }
 
+export async function mkdir(name: string, currentDir: string): Promise<FileInfo[]> {
+    try {
+        const path = Path.join(rootDir, currentDir, name);
+        await fsAsync.mkdir(path);
+
+    } catch (error) {
+
+    }
+    const result = await listOfFilesFromDir(currentDir);
+    return result;
+}
+
 export async function deleteFiles(paths: string[]): Promise<StatusInfo<string>[]> {
     const results: StatusInfo<string>[] = [];
     // paths = paths.map(it => Path.join(rootDir, it));
