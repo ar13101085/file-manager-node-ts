@@ -40,7 +40,15 @@ export async function deleteFiles(paths: string[]): Promise<StatusInfo<string>[]
     for (const path of paths) {
         try {
             const file = Path.join(rootDir, path)
-            await fsAsync.unlink(file);
+            const fileInfo = await getFileDetails(file);
+            if (fileInfo.isDirectory) {
+                await fsAsync.rm(file, {
+                    recursive: true
+                });
+            } else {
+                await fsAsync.unlink(file);
+            }
+
             results.push({
                 isSuccess: true,
                 msg: 'deleted',
