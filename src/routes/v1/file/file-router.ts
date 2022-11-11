@@ -48,7 +48,7 @@ router.post("/archive-files", async (req: Request, res: Response, next: NextFunc
 router.post("/upload-files", async (req: Request, res: Response, next: NextFunction) => {
     const form = formidable({ multiples: true });
     form.parse(req, async (err, fields, files) => {
-        if (err) {
+        if (err || !files.file) {
             res.status(400).send(err);
             return;
         }
