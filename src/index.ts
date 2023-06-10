@@ -1,6 +1,6 @@
 require('source-map-support').install()
 require('dotenv').config();
-import { ConnectionOptions, connect } from "mongoose";
+import { connect } from "mongoose";
 import { app } from "./app";
 const start = async () => {
     if (!process.env.PORT) {
@@ -13,13 +13,7 @@ const start = async () => {
         throw new Error('JWT_SECRET_KEY is not defined.');
     }
     try {
-        const options: ConnectionOptions = {
-            useNewUrlParser: true,
-            useCreateIndex: true,
-            useFindAndModify: false,
-            useUnifiedTopology: true,
-        };
-        await connect(process.env.DB_URL, options);
+        await connect(process.env.DB_URL);
         console.log("successfully connected with mongodb")
     } catch (error) {
 
